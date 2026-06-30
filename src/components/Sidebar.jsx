@@ -1,7 +1,7 @@
 import React from 'react';
-import { LayoutDashboard, ShoppingBag, Package, Users, BarChart3, Layers } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Package, Users, BarChart3, Layers, X } from 'lucide-react';
 
-const Sidebar = ({ activeTab, setActiveTab }) => {
+const Sidebar = ({ activeTab, setActiveTab, isOpen, setIsOpen }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'orders', label: 'Sales Orders', icon: ShoppingBag },
@@ -11,10 +11,17 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
   ];
 
   return (
-    <div className="sidebar">
+    <div className={`sidebar ${isOpen ? 'open' : ''}`}>
       <div className="sidebar-logo">
-        <BarChart3 size={24} />
-        <span>AWN Analytics</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <BarChart3 size={24} />
+          <span>AWN Analytics</span>
+        </div>
+        
+        {/* Mobile close button */}
+        <button className="sidebar-close-btn" onClick={() => setIsOpen(false)}>
+          <X size={20} />
+        </button>
       </div>
       <ul className="sidebar-menu">
         {menuItems.map((item) => {
@@ -23,7 +30,10 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             <li
               key={item.id}
               className={`sidebar-item ${activeTab === item.id ? 'active' : ''}`}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                setIsOpen(false);
+              }}
             >
               <IconComponent size={20} />
               <span>{item.label}</span>

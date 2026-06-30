@@ -12,6 +12,7 @@ import { Sparkles, Palette, Sun, Moon } from 'lucide-react';
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [theme, setTheme] = useState('dark');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [filters, setFilters] = useState({
     startDate: null,
     endDate: null,
@@ -222,21 +223,39 @@ function App() {
 
   return (
     <div className="app-container">
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      
+      {isSidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setIsSidebarOpen(false)} />
+      )}
       
       <main className="main-content">
         <header className="header-container">
-          <div>
-            <h1 className="view-title">
-              {activeTab === 'dashboard' && 'Dashboard Overview'}
-              {activeTab === 'orders' && 'Sales Orders'}
-              {activeTab === 'products' && 'Product Directory'}
-              {activeTab === 'customers' && 'Customer Base'}
-              {activeTab === 'olap' && 'OLAP Cube Analyzer'}
-            </h1>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>
-              AWN Dashboards Enterprise Analytics System
-            </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <button 
+              className="mobile-menu-toggle"
+              onClick={() => setIsSidebarOpen(true)}
+              aria-label="Open navigation menu"
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                <line x1="4" y1="5" x2="20" y2="5" />
+                <line x1="4" y1="10" x2="20" y2="10" />
+                <line x1="4" y1="15" x2="20" y2="15" />
+                <line x1="4" y1="20" x2="20" y2="20" />
+              </svg>
+            </button>
+            <div>
+              <h1 className="view-title">
+                {activeTab === 'dashboard' && 'Dashboard Overview'}
+                {activeTab === 'orders' && 'Sales Orders'}
+                {activeTab === 'products' && 'Product Directory'}
+                {activeTab === 'customers' && 'Customer Base'}
+                {activeTab === 'olap' && 'OLAP Cube Analyzer'}
+              </h1>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>
+                AWN Dashboards Enterprise Analytics System
+              </p>
+            </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>

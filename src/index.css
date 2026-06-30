@@ -29,6 +29,8 @@
 html, html[data-theme='dark'] {
   --bg-main: #0a0b0e;
   --bg-sidebar: #0f1118;
+  --bg-hover: rgba(255, 255, 255, 0.04);
+  --bg-active: rgba(99, 102, 241, 0.15);
   --bg-card: rgba(20, 22, 33, 0.7);
   --bg-card-hover: rgba(28, 31, 46, 0.85);
   --bg-input: rgba(8, 9, 12, 0.85);
@@ -46,14 +48,16 @@ html, html[data-theme='dark'] {
 }
 
 html[data-theme='light'] {
-  --bg-main: #f1f5f9;          /* Warmer, deeper slate-gray for visual depth */
-  --bg-sidebar: #0f172a;       /* Premium dark sidebar in light theme */
-  --bg-card: #ffffff;          /* Symmetrical white cards */
+  --bg-main: #f1f5f9;
+  --bg-sidebar: #ffffff;
+  --bg-hover: rgba(15, 23, 42, 0.05);
+  --bg-active: rgba(99, 102, 241, 0.08);
+  --bg-card: #ffffff;
   --bg-card-hover: #ffffff;
   --bg-input: #ffffff;
-  --border-color: #cbd5e1;     /* Highly visible border elements */
-  --text-primary: #0f172a;     /* Deep charcoal primary text */
-  --text-secondary: #334155;   /* Slate secondary text */
+  --border-color: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
   --text-muted: #64748b;
   
   --accent-teal: #0891b2;
@@ -106,13 +110,12 @@ body {
   display: flex;
   flex-direction: column;
   padding: 32px;
-  margin-left: 260px; /* Sidebar width */
+  margin-left: 0; /* Universal overlay sidebar */
   transition: var(--transition-smooth);
 }
 
 @media (max-width: 768px) {
   .main-content {
-    margin-left: 0;
     padding: 16px;
   }
 }
@@ -149,14 +152,19 @@ body {
   flex-direction: column;
   z-index: 100;
   padding: 28px 16px;
-  transition: background-color 0.5s ease;
+  transform: translateX(-100%); /* Collapsed by default on all screens */
+  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.25);
+  transition: background-color 0.3s ease, border-color 0.3s ease, transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sidebar.open {
+  transform: translateX(0);
 }
 
 .sidebar-logo {
   font-family: var(--font-display);
   font-size: 22px;
   font-weight: 800;
-  color: #ffffff;               /* Force white logo */
   margin-bottom: 36px;
   display: flex;
   align-items: center;
@@ -180,7 +188,7 @@ body {
   gap: 14px;
   padding: 14px 18px;
   border-radius: 12px;
-  color: #9ca3af;               /* Force light gray text */
+  color: var(--text-secondary);
   text-decoration: none;
   font-weight: 600;
   font-size: 14px;
@@ -189,16 +197,16 @@ body {
 }
 
 .sidebar-item:hover {
-  color: #ffffff;               /* Force hover white text */
-  background-color: rgba(255, 255, 255, 0.04);
+  color: var(--text-primary);
+  background-color: var(--bg-hover);
   transform: translateX(4px);
 }
 
 .sidebar-item.active {
-  color: #ffffff;               /* Force active white text */
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.15) 0%, rgba(6, 182, 212, 0.15) 100%);
+  color: var(--accent-indigo);
+  background-color: var(--bg-active);
   border-left: 4px solid var(--accent-indigo);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
 }
 
 /* Header & Filter panel */
@@ -638,4 +646,60 @@ body {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
+}
+
+/* Universal Collapsible Navigation Toggles & Backdrop Overlay */
+.mobile-menu-toggle {
+  display: flex;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.25s ease;
+  align-items: center;
+  justify-content: center;
+}
+
+.mobile-menu-toggle:hover {
+  background: var(--bg-hover);
+}
+
+.sidebar-close-btn {
+  display: block;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background 0.25s ease;
+}
+
+.sidebar-close-btn:hover {
+  background: var(--bg-hover);
+}
+
+.sidebar-logo {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sidebar-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 99;
+  animation: fadeIn 0.25s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
