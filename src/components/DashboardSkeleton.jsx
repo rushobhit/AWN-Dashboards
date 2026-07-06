@@ -1,5 +1,11 @@
 import React from 'react';
 
+// Per-card chart skeleton — used inside each chart card while loading
+export const ChartSkeleton = ({ height = 300 }) => (
+  <div className="skeleton" style={{ width: '100%', height, borderRadius: 8 }} />
+);
+
+// Full page dashboard skeleton — used for the initial page load
 const DashboardSkeleton = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>

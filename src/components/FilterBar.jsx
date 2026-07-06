@@ -1,13 +1,11 @@
-import React from 'react';
-import { Calendar, SlidersHorizontal, RefreshCw } from 'lucide-react';
+import React, { useState } from 'react';
+import { DateRangePicker } from 'react-date-range';
+import 'react-date-range/dist/styles.css';
+import 'react-date-range/dist/theme/default.css';
+import { format } from 'date-fns';
 
-const FilterBar = ({ filters, setFilters }) => {
-  const handleDateChange = (field, val) => {
-    setFilters((prev) => ({
-      ...prev,
-      [field]: val || null,
-    }));
-  };
+const FilterBar = ({ filters, setFilters, filterOptions }) => {
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const handleSelectChange = (field, val) => {
     setFilters((prev) => ({
@@ -25,8 +23,13 @@ const FilterBar = ({ filters, setFilters }) => {
     });
   };
 
-  const categories = ['Accessories', 'Bikes', 'Clothing', 'Components'];
-  const territories = [
+  const removeFilter = (field) => {
+    setFilters((prev) => ({ ...prev, [field]: null }));
+  };
+
+
+  const categories = filterOptions?.categories || ['Accessories', 'Bikes', 'Clothing', 'Components'];
+  const territories = filterOptions?.territories || [
     { id: 1, name: 'Northwest' },
     { id: 2, name: 'Northeast' },
     { id: 3, name: 'Southwest' },
@@ -39,26 +42,40 @@ const FilterBar = ({ filters, setFilters }) => {
     { id: 10, name: 'United Kingdom' },
   ];
 
-  return (
-    <div className="filter-bar">
-      <div className="filter-group">
-        <label className="filter-label">Start Date</label>
-        <input
-          type="date"
-          className="filter-input"
-          value={filters.startDate || ''}
-          onChange={(e) => handleDateChange('startDate', e.target.value)}
-        />
-      </div>
+  const hasActiveFilters = filters.startDate || filters.endDate || filters.territoryId || filters.categoryName;
 
-      <div className="filter-group">
-        <label className="filter-label">End Date</label>
-        <input
-          type="date"
-          className="filter-input"
-          value={filters.endDate || ''}
-          onChange={(e) => handleDateChange('endDate', e.target.value)}
-        />
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+      <div className="filter-bar">
+      <div className="filter-group" style={{ position: 'relative' }}>
+        <label className="filter-label">Date Range</label>
+        <div 
+          className="filter-input" 
+          onClick={() => setShowDatePicker(!showDatePicker)}
+          style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', minHeight: '40px' }}
+        >
+          {filters.startDate || 'Start'} to {filters.endDate || 'End'}
+        </div>
+        {showDatePicker && (
+          <div style={{ position: 'absolute', zIndex: 50, top: '100%', left: 0, marginTop: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+            <DateRangePicker
+              ranges={[{
+                startDate: filters.startDate ? new Date(filters.startDate) : new Date(),
+                endDate: filters.endDate ? new Date(filters.endDate) : new Date(),
+                key: 'selection'
+              }]}
+              onChange={(item) => {
+                const s = format(item.selection.startDate, 'yyyy-MM-dd');
+                const e = format(item.selection.endDate, 'yyyy-MM-dd');
+                setFilters((prev) => ({
+                  ...prev,
+                  startDate: s,
+                  endDate: e,
+                }));
+              }}
+            />
+          </div>
+        )}
       </div>
 
       <div className="filter-group">
@@ -93,12 +110,34 @@ const FilterBar = ({ filters, setFilters }) => {
         </select>
       </div>
 
-      <div className="filter-actions">
-        <button className="btn btn-secondary" onClick={resetFilters}>
-          Reset Filters
-        </button>
-      </div>
+
     </div>
+    
+    {hasActiveFilters && (
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        {filters.startDate && (
+          <span className="filter-chip" onClick={() => removeFilter('startDate')}>
+            Start: {filters.startDate} ✕
+          </span>
+        )}
+        {filters.endDate && (
+          <span className="filter-chip" onClick={() => removeFilter('endDate')}>
+            End: {filters.endDate} ✕
+          </span>
+        )}
+        {filters.territoryId && (
+          <span className="filter-chip" onClick={() => removeFilter('territoryId')}>
+            Territory: {territories.find(t => t.id == filters.territoryId)?.name || filters.territoryId} ✕
+          </span>
+        )}
+        {filters.categoryName && (
+          <span className="filter-chip" onClick={() => removeFilter('categoryName')}>
+            Category: {filters.categoryName} ✕
+          </span>
+        )}
+      </div>
+    )}
+  </div>
   );
 };
 

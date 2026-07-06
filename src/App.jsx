@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import Sidebar from './components/Sidebar';
 import FilterBar from './components/FilterBar';
 import KpiGrid from './components/KpiGrid';
@@ -6,168 +6,223 @@ import DashboardCharts from './components/DashboardCharts';
 import DataExplorer from './components/DataExplorer';
 import DashboardSkeleton from './components/DashboardSkeleton';
 import OlapAnalyzer from './components/OlapAnalyzer';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { dashboardApi, entityApi } from './services/api';
-import { Sparkles, Palette, Sun, Moon } from 'lucide-react';
+
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [theme, setTheme] = useState('dark');
+  const [theme, setTheme] = useState(() => localStorage.getItem('awn-theme') || 'dark');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [filters, setFilters] = useState({
     startDate: null,
     endDate: null,
     territoryId: null,
+    territoryId: null,
     categoryName: null,
   });
+  const [granularity, setGranularity] = useState('month');
 
-  const [kpis, setKpis] = useState(null);
-  const [monthlySales, setMonthlySales] = useState([]);
-  const [salesByCategory, setSalesByCategory] = useState([]);
-  const [salesByTerritory, setSalesByTerritory] = useState([]);
-  const [topProducts, setTopProducts] = useState([]);
-  const [topCustomers, setTopCustomers] = useState([]);
-  const [salesChannels, setSalesChannels] = useState([]);
-  const [salesPeople, setSalesPeople] = useState([]);
-  const [subcategoryMargins, setSubcategoryMargins] = useState([]);
-  const [salesTrend, setSalesTrend] = useState([]);
-  const [productPerformance, setProductPerformance] = useState([]);
-  
-  const [loading, setLoading] = useState(false);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-
-  const handleCategoryClick = (categoryName) => {
-    setFilters((prev) => ({
-      ...prev,
-      categoryName: prev.categoryName === categoryName ? null : categoryName,
-    }));
-    triggerToast(
-      filters.categoryName === categoryName
-        ? 'Cleared category filter'
-        : `Filtering by category: ${categoryName}`
-    );
-  };
-
-  const handleTerritoryClick = (territoryName) => {
-    const territoriesList = [
-      { id: 1, name: 'Northwest' },
-      { id: 2, name: 'Northeast' },
-      { id: 3, name: 'Southwest' },
-      { id: 4, name: 'Southeast' },
-      { id: 5, name: 'Northwest Canada' },
-      { id: 6, name: 'Canada' },
-      { id: 7, name: 'France' },
-      { id: 8, name: 'Germany' },
-      { id: 9, name: 'Australia' },
-      { id: 10, name: 'United Kingdom' },
-    ];
-    const match = territoriesList.find(
-      (t) => t.name.toLowerCase() === territoryName.toLowerCase()
-    );
-    if (match) {
-      setFilters((prev) => ({
-        ...prev,
-        territoryId: prev.territoryId === match.id ? null : match.id,
-      }));
-      triggerToast(
-        filters.territoryId === match.id
-          ? 'Cleared territory filter'
-          : `Filtering by territory: ${match.name}`
-      );
-    }
-  };
-
-  // OLAP Facts state
-  const [olapFacts, setOlapFacts] = useState([]);
-  const [olapLoading, setOlapLoading] = useState(false);
+  const queryClient = useQueryClient();
 
   const getFilterParams = () => {
     const params = {};
     if (filters.startDate) params.startDate = `${filters.startDate}T00:00:00`;
     if (filters.endDate) params.endDate = `${filters.endDate}T23:59:59`;
-    if (filters.territoryId) params.territoryId = parseInt(filters.territoryId);
+    const tid = parseInt(filters.territoryId, 10);
+    if (!isNaN(tid) && tid > 0) params.territoryId = tid;
     if (filters.categoryName) params.categoryName = filters.categoryName;
     return params;
   };
 
-  const loadDashboardData = async () => {
-    setLoading(true);
-    const params = getFilterParams();
-    try {
+  const { data: dashboardData, isLoading: loading } = useQuery({
+    queryKey: ['dashboard', filters],
+    queryFn: async ({ signal }) => {
+      const params = getFilterParams();
       const [
-        resKpis,
-        resMonthly,
-        resCategory,
-        resTerritory,
-        resTopProd,
-        resTopCust,
-        resChannels,
-        resPeople,
-        resMargins,
-        resTrend,
-        resPerformance
+        resKpis, resMonthly, resCategory, resTerritory,
+        resTopProd, resTopCust, resChannels, resPeople,
+        resMargins, resPerformance
       ] = await Promise.all([
-        dashboardApi.getKpis(params),
-        dashboardApi.getMonthlySales(params),
-        dashboardApi.getSalesByCategory(params),
-        dashboardApi.getSalesByTerritory(params),
-        dashboardApi.getTopProducts(params),
-        dashboardApi.getTopCustomers(params),
-        dashboardApi.getSalesChannels(params),
-        dashboardApi.getSalesPeople(params),
-        dashboardApi.getSubcategoryMargins(params),
-        dashboardApi.getSalesTrend(params),
-        dashboardApi.getProductPerformance(params)
+        dashboardApi.getKpis(params, signal),
+        dashboardApi.getMonthlySales(params, signal),
+        dashboardApi.getSalesByCategory(params, signal),
+        dashboardApi.getSalesByTerritory(params, signal),
+        dashboardApi.getTopProducts(params, signal),
+        dashboardApi.getTopCustomers(params, signal),
+        dashboardApi.getSalesChannels(params, signal),
+        dashboardApi.getSalesPeople(params, signal),
+        dashboardApi.getSubcategoryMargins(params, signal),
+        dashboardApi.getProductPerformance(params, signal)
       ]);
 
-      setKpis(resKpis.data);
-      setMonthlySales(resMonthly.data);
-      setSalesByCategory(resCategory.data);
-      setSalesByTerritory(resTerritory.data);
-      setTopProducts(resTopProd.data);
-      setTopCustomers(resTopCust.data);
-      setSalesChannels(resChannels.data);
-      setSalesPeople(resPeople.data);
-      setSubcategoryMargins(resMargins.data);
-      setSalesTrend(resTrend.data);
-      setProductPerformance(resPerformance.data);
-    } catch (err) {
-      console.error('Failed to load dashboard data:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+      return {
+        kpis: resKpis.data,
+        monthlySales: resMonthly.data,
+        salesByCategory: resCategory.data,
+        salesByTerritory: resTerritory.data,
+        topProducts: resTopProd.data,
+        topCustomers: resTopCust.data,
+        salesChannels: resChannels.data,
+        salesPeople: resPeople.data,
+        subcategoryMargins: resMargins.data,
+        productPerformance: resPerformance.data
+      };
+    },
+    placeholderData: keepPreviousData,
+    enabled: activeTab === 'dashboard'
+  });
 
-  const loadOlapData = async () => {
-    setOlapLoading(true);
-    const params = getFilterParams();
-    try {
-      const res = await dashboardApi.getOlapFacts(params);
-      setOlapFacts(res.data || []);
-    } catch (err) {
-      console.error('Failed to load OLAP facts:', err);
-    } finally {
-      setOlapLoading(false);
-    }
-  };
+  const { data: salesTrend = [], isLoading: trendLoading } = useQuery({
+    queryKey: ['salesTrend', filters, granularity],
+    queryFn: async ({ signal }) => {
+      const params = getFilterParams();
+      params.granularity = granularity;
+      const res = await dashboardApi.getSalesTrend(params, signal);
+      return res.data;
+    },
+    placeholderData: keepPreviousData,
+    enabled: activeTab === 'dashboard'
+  });
 
-  useEffect(() => {
-    if (activeTab === 'dashboard') {
-      loadDashboardData();
-    } else if (activeTab === 'olap') {
-      loadOlapData();
-    }
-  }, [activeTab, filters]);
+  const { data: olapFacts = [], isLoading: olapLoading } = useQuery({
+    queryKey: ['olapFacts', filters],
+    queryFn: async ({ signal }) => {
+      const res = await dashboardApi.getOlapFacts(getFilterParams(), signal);
+      return res.data || [];
+    },
+    placeholderData: keepPreviousData,
+    enabled: activeTab === 'olap'
+  });
 
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
+  const { data: filterOptions } = useQuery({
+    queryKey: ['filterOptions'],
+    queryFn: async ({ signal }) => {
+      const res = await dashboardApi.getFilterOptions(signal);
+      return res.data;
+    }
+  });
+
+  const kpis = dashboardData?.kpis;
+  const monthlySales = dashboardData?.monthlySales || [];
+  const salesByCategory = dashboardData?.salesByCategory || [];
+  const salesByTerritory = dashboardData?.salesByTerritory || [];
+  const topProducts = dashboardData?.topProducts || [];
+  const topCustomers = dashboardData?.topCustomers || [];
+  const salesChannels = dashboardData?.salesChannels || [];
+  const salesPeople = dashboardData?.salesPeople || [];
+  const subcategoryMargins = dashboardData?.subcategoryMargins || [];
+  const productPerformance = dashboardData?.productPerformance || [];
+
+  const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const triggerToast = (msg) => {
     setToastMessage(msg);
     setShowToast(true);
     setTimeout(() => setShowToast(false), 3000);
   };
+
+  const handleCategoryClick = (categoryName) => {
+    setFilters((prev) => {
+      const isClearing = prev.categoryName === categoryName;
+      triggerToast(isClearing ? 'Cleared category filter' : `Filtering by: ${categoryName}`);
+      return { ...prev, categoryName: isClearing ? null : categoryName };
+    });
+  };
+
+  const handleTerritoryClick = (territoryName) => {
+    // Dynamic territory resolution from filterOptions
+    const territories = filterOptions?.territories || [];
+    const match = territories.find(
+      (t) => t.name.toLowerCase() === territoryName.toLowerCase()
+    );
+    if (match) {
+      setFilters((prev) => {
+        const isClearing = prev.territoryId === match.id;
+        triggerToast(isClearing ? 'Cleared territory filter' : `Filtering by: ${match.name}`);
+        return { ...prev, territoryId: isClearing ? null : match.id };
+      });
+    }
+  };
+
+  const handlePeriodClick = (periodStr) => {
+    if (!periodStr) return;
+    
+    let nextGranularity = granularity;
+    let startDate, endDate;
+
+    try {
+      if (granularity === 'year') {
+        // e.g. "2012"
+        const year = parseInt(periodStr, 10);
+        startDate = `${year}-01-01`;
+        endDate = `${year}-12-31`;
+        nextGranularity = 'month'; // drill down to month
+      } else if (granularity === 'quarter') {
+        // e.g. "2012 Q3"
+        const parts = periodStr.split(' ');
+        const year = parseInt(parts[0], 10);
+        const q = parseInt(parts[1].replace('Q', ''), 10);
+        const startMonth = (q - 1) * 3 + 1;
+        const endMonth = q * 3;
+        startDate = `${year}-${String(startMonth).padStart(2, '0')}-01`;
+        const end = new Date(year, endMonth, 0);
+        endDate = `${year}-${String(endMonth).padStart(2, '0')}-${end.getDate()}`;
+        nextGranularity = 'month'; // drill down to month
+      } else if (granularity === 'month') {
+        // e.g. "2012-05"
+        const [year, month] = periodStr.split('-');
+        startDate = `${year}-${month}-01`;
+        const end = new Date(year, month, 0);
+        endDate = `${year}-${month}-${end.getDate()}`;
+        nextGranularity = 'day'; // drill down to day
+      } else if (granularity === 'week') {
+        // e.g. "2012-23"
+        // Postgres ISO week is tough to parse precisely in plain JS without a library.
+        // As a fallback, we just don't set dates and let them know.
+        triggerToast(`Week drilldown not fully supported yet.`);
+        return;
+      } else if (granularity === 'day') {
+        // e.g. "2012-05-13"
+        startDate = periodStr;
+        endDate = periodStr;
+        nextGranularity = 'day'; // stay on day
+      }
+
+      setFilters((prev) => {
+        triggerToast(`Drilled down into: ${periodStr}`);
+        return { ...prev, startDate, endDate };
+      });
+      if (nextGranularity !== granularity) {
+        setGranularity(nextGranularity);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handler = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+        e.preventDefault();
+        queryClient.invalidateQueries(['dashboard']);
+        queryClient.invalidateQueries(['olapFacts']);
+        triggerToast('Refreshing dashboard data...');
+      }
+      if (e.key === 'Escape') {
+        setIsSidebarOpen(false);
+        setShowToast(false);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [queryClient]);
 
   const formatCurrency = (val) => {
     if (val === null || val === undefined) return 'N/A';
@@ -199,7 +254,7 @@ function App() {
 
   // Define Columns for Data Explorers
   const productColumns = [
-    { key: 'id', label: 'ID', sortable: true },
+    { key: 'productId', label: 'ID', sortable: true },
     { key: 'name', label: 'Name', sortable: true },
     { key: 'productNumber', label: 'Product Number', sortable: true },
     { key: 'color', label: 'Color', format: (val) => val || 'N/A' },
@@ -207,14 +262,14 @@ function App() {
   ];
 
   const customerColumns = [
-    { key: 'id', label: 'ID', sortable: true },
+    { key: 'customerId', label: 'ID', sortable: true },
     { key: 'accountNumber', label: 'Account Number', sortable: true },
-    { key: 'personId', label: 'Person ID', format: (val) => val || 'N/A' },
-    { key: 'storeId', label: 'Store ID', format: (val) => val || 'N/A' },
+    { key: 'personId', label: 'Person ID', sortable: true, format: (val) => val || 'N/A' },
+    { key: 'storeId', label: 'Store ID', sortable: true, format: (val) => val || 'N/A' },
   ];
 
   const orderColumns = [
-    { key: 'id', label: 'ID', sortable: true },
+    { key: 'salesOrderId', label: 'ID', sortable: true },
     { key: 'salesOrderNumber', label: 'Order Number', sortable: true },
     { key: 'orderDate', label: 'Order Date', sortable: true, format: (val) => formatDate(val) },
     { key: 'customerId', label: 'Customer ID', sortable: true },
@@ -266,6 +321,7 @@ function App() {
               onClick={() => {
                 const next = theme === 'light' ? 'dark' : 'light';
                 setTheme(next);
+                localStorage.setItem('awn-theme', next);
                 triggerToast(`Switched theme to ${next === 'dark' ? 'Dark Mode' : 'Light Mode'}`);
               }}
               aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
@@ -296,13 +352,14 @@ function App() {
             <FilterBar
               filters={filters}
               setFilters={setFilters}
+              filterOptions={filterOptions}
             />
 
-            {loading && !kpis ? (
+            {loading ? (
               <DashboardSkeleton />
             ) : (
               <>
-                <KpiGrid kpis={kpis} />
+                <KpiGrid kpis={kpis} monthlySales={monthlySales} salesTrend={salesTrend} />
                 <DashboardCharts
                   monthlySales={monthlySales}
                   salesByCategory={salesByCategory}
@@ -316,7 +373,11 @@ function App() {
                   productPerformance={productPerformance}
                   onCategoryClick={handleCategoryClick}
                   onTerritoryClick={handleTerritoryClick}
+                  onMonthClick={handlePeriodClick}
                   activeFilters={filters}
+                  granularity={granularity}
+                  setGranularity={setGranularity}
+                  trendLoading={trendLoading}
                 />
               </>
             )}
@@ -327,7 +388,7 @@ function App() {
           <OlapAnalyzer
             facts={olapFacts}
             loading={olapLoading}
-            onRefresh={loadOlapData}
+            onRefresh={() => queryClient.invalidateQueries(['olapFacts'])}
           />
         )}
 
@@ -337,7 +398,7 @@ function App() {
             title="Sales Orders Registry"
             columns={orderColumns}
             fetchData={entityApi.getSalesOrders}
-            defaultSortBy="id"
+            defaultSortBy="salesOrderId"
           />
         )}
 
@@ -347,7 +408,7 @@ function App() {
             title="Products Catalog"
             columns={productColumns}
             fetchData={entityApi.getProducts}
-            defaultSortBy="id"
+            defaultSortBy="productId"
           />
         )}
 
@@ -357,7 +418,7 @@ function App() {
             title="Customers Registry"
             columns={customerColumns}
             fetchData={entityApi.getCustomers}
-            defaultSortBy="id"
+            defaultSortBy="customerId"
           />
         )}
       </main>

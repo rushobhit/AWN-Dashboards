@@ -1,0 +1,12 @@
+{
+  "name": "AWN Analytics Dashboard",
+  "short_name": "AWN Analytics",
+  "description": "Power BI style analytics dashboard",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0b0e",
+  "theme_color": "#6366f1",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

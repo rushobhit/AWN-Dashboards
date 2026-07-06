@@ -137,9 +137,11 @@ const DataExplorer = ({ title, columns, fetchData, defaultSortBy }) => {
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
           <h2 className="view-title" style={{ fontSize: '20px' }}>{title}</h2>
-          <button className="btn btn-secondary" onClick={loadData} disabled={loading} style={{ padding: '8px 12px' }}>
-            <RefreshCw size={14} className={loading ? 'spinner' : ''} />
-          </button>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className="btn btn-secondary" onClick={loadData} disabled={loading} style={{ padding: '8px 12px' }}>
+              <RefreshCw size={14} className={loading ? 'spinner' : ''} />
+            </button>
+          </div>
         </div>
 
         {/* Sleek inline search bar */}
